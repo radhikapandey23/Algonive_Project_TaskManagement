@@ -48,6 +48,43 @@ exports.updateTaskStatus = async (req, res) => {
     }
 };
 
+// UPDATE TASK
+exports.updateTask = async (req, res) => {
+    try {
+        const { title, description, assignedTo, dueDate } = req.body;
+
+        const task = await Task.findByIdAndUpdate(
+            req.params.id,
+            { title, description, assignedTo, dueDate },
+            { new: true }
+        ).populate("createdBy", "name")
+         .populate("assignedTo", "name");
+
+        if (!task) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        res.json(task);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// DELETE TASK
+exports.deleteTask = async (req, res) => {
+    try {
+        const task = await Task.findByIdAndDelete(req.params.id);
+
+        if (!task) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        res.json({ message: "Task deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 
 //get own task
 

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaTimes, FaPlus, FaUser, FaCalendarAlt, FaFileAlt, FaTag } from "react-icons/fa";
-import "./CreateTaskModal.css";
+import { FaTimes, FaEdit, FaUser, FaCalendarAlt, FaFileAlt, FaTag } from "react-icons/fa";
+import "./EditTaskModal.css";
 
-const CreateTaskModal = ({ closeModal, token, fetchTasks }) => {
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [assignedTo, setAssignedTo] = useState("");
-    const [dueDate, setDueDate] = useState("");
+const EditTaskModal = ({ closeModal, token, fetchTasks, task }) => {
+    const [title, setTitle] = useState(task?.title || "");
+    const [description, setDescription] = useState(task?.description || "");
+    const [assignedTo, setAssignedTo] = useState(task?.assignedTo?._id || "");
+    const [dueDate, setDueDate] = useState(
+        task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ""
+    );
     const [users, setUsers] = useState([]);
 
     useEffect(() => {
@@ -15,16 +17,24 @@ const CreateTaskModal = ({ closeModal, token, fetchTasks }) => {
         axios.get("http://localhost:4000/api/users", {
             headers: { Authorization: `Bearer ${token}` }
         }).then(res => {
-            console.log("UserApi ", res.data)
-            setUsers(res.data.users)
-        })
-            .catch(err => console.log(err));
+            setUsers(res.data.users);
+        }).catch(err => console.log(err));
     }, [token]);
+
+    // Reset form when task changes
+    useEffect(() => {
+        if (task) {
+            setTitle(task.title || "");
+            setDescription(task.description || "");
+            setAssignedTo(task.assignedTo?._id || "");
+            setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "");
+        }
+    }, [task]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post("http://localhost:4000/api/tasks", {
+            const response = await axios.put(`http://localhost:4000/api/tasks/${task._id}`, {
                 title,
                 description,
                 assignedTo,
@@ -32,31 +42,30 @@ const CreateTaskModal = ({ closeModal, token, fetchTasks }) => {
             }, { headers: { Authorization: `Bearer ${token}` } });
             
             if (window.showToast) {
-                window.showToast('Task created successfully!', 'success');
+                window.showToast('Task updated successfully!', 'success');
             }
             
-            // Ensure fetchTasks is called to update the tasks state
+            // Call fetchTasks to refresh the data and update UI
             await fetchTasks();
             closeModal();
         } catch (err) {
-            console.log('Create task error:', err);
             if (window.showToast) {
-                window.showToast('Failed to create task', 'error');
+                window.showToast('Failed to update task', 'error');
             }
         }
     };
 
     return (
         <div className="modal-overlay">
-            <div className="create-task-modal">
+            <div className="edit-task-modal">
                 <div className="modal-header">
                     <div className="header-content">
                         <div className="header-icon">
-                            <FaPlus />
+                            <FaEdit />
                         </div>
                         <div className="header-text">
-                            <h3>Create New Task</h3>
-                            <p>Add a new task to your workflow</p>
+                            <h3>Edit Task</h3>
+                            <p>Update task details</p>
                         </div>
                     </div>
                     <button className="close-btn" onClick={closeModal}>
@@ -124,7 +133,6 @@ const CreateTaskModal = ({ closeModal, token, fetchTasks }) => {
                                 onChange={e => setDueDate(e.target.value)} 
                                 required 
                                 className="form-input"
-                                min={new Date().toISOString().split('T')[0]}
                             />
                         </div>
                     </div>
@@ -133,9 +141,9 @@ const CreateTaskModal = ({ closeModal, token, fetchTasks }) => {
                         <button type="button" onClick={closeModal} className="cancel-btn">
                             Cancel
                         </button>
-                        <button type="submit" className="create-btn">
-                            <FaPlus className="btn-icon" />
-                            Create Task
+                        <button type="submit" className="update-btn">
+                            <FaEdit className="btn-icon" />
+                            Update Task
                         </button>
                     </div>
                 </form>
@@ -144,4 +152,4 @@ const CreateTaskModal = ({ closeModal, token, fetchTasks }) => {
     );
 };
 
-export default CreateTaskModal;
+export default EditTaskModal;

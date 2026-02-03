@@ -1,10 +1,10 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Home from "./pages/Home";
+import ToastManager from "./components/ToastManager";
 
 // ProtectedRoute: sirf login ke baad hi dashboard show kare
 const ProtectedRoute = ({ children }) => {
@@ -15,9 +15,13 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
     <Router>
+      <ToastManager />
       <Routes>
-        {/* App start hone par Register page dikhe */}
-        <Route path="/" element={<Register />} />
+        {/* Home/Landing page */}
+        <Route path="/" element={<Home />} />
+
+        {/* Register page */}
+        <Route path="/register" element={<Register />} />
 
         {/* Register ke baad login page */}
         <Route path="/login" element={<Login />} />
@@ -27,8 +31,6 @@ function App() {
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Navbar />
-              <Sidebar />
               <Dashboard />
             </ProtectedRoute>
           }

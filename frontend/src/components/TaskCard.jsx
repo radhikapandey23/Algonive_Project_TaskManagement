@@ -1,4 +1,5 @@
 import React from "react";
+import { FaEdit, FaTrash } from "react-icons/fa";
 
 const getDeadlineLabel = (dueDate) => {
     const today = new Date();
@@ -21,7 +22,7 @@ const getDeadlineLabel = (dueDate) => {
 
 
 
-const TaskCard = ({ task, updateStatus, showDeadline }) => {
+const TaskCard = ({ task, updateStatus, showDeadline, deleteTask, editTask }) => {
 
 
 
@@ -57,8 +58,23 @@ const TaskCard = ({ task, updateStatus, showDeadline }) => {
 
             <div className="button-row">
                 <button className="pending" onClick={() => updateStatus(task._id, "pending")}>Pending</button>
-                <button className="inprogress" onClick={() => updateStatus(task._id, "in-progress")}>In-Progress</button>
+                <button className="inprogress" onClick={() => updateStatus(task._id, "inprogress")}>In-Progress</button>
                 <button className="completed" onClick={() => updateStatus(task._id, "completed")}>Completed</button>
+            </div>
+            
+            <div className="action-buttons">
+                <button 
+                    className="edit-btn" 
+                    onClick={() => editTask && editTask(task)} 
+                    title="Edit Task"
+                >
+                    <FaEdit />
+                    <span>Edit</span>
+                </button>
+                <button className="delete-btn" onClick={() => deleteTask && deleteTask(task._id)} title="Delete Task">
+                    <FaTrash />
+                    <span>Delete</span>
+                </button>
             </div>
 
         </div>

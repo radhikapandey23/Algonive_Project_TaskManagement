@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import TaskCard from "../components/TaskCard";
 import CreateTaskModal from "../components/CreateTaskModal";
+import EditTaskModal from "../components/EditTaskModal";
+import ConfirmModal from "../components/ConfirmModal";
 import Sidebar from "../components/Sidebar";
 import Settings from "./Setting";
 import Navbar from "../components/Navbar";
@@ -11,6 +13,10 @@ const Dashboard = () => {
     const [tasks, setTasks] = useState([]);
     const [deadlineTasks, setDeadlineTasks] = useState([]);
     const [showModal, setShowModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState(null);
+    const [editingTask, setEditingTask] = useState(null);
     const [currentPage, setCurrentPage] = useState("dashboard");
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -66,6 +72,7 @@ const Dashboard = () => {
             const res = await axios.get("http://localhost:4000/api/tasks", {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            console.log('Dashboard fetchTasks:', res.data);
             setTasks(res.data);
             calculateDeadlineTasks(res.data);
         } catch (err) {
@@ -80,6 +87,7 @@ const Dashboard = () => {
             const res = await axios.get("http://localhost:4000/api/tasks/my", {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            console.log('Dashboard fetchMyTasks:', res.data);
             setTasks(res.data);
             calculateDeadlineTasks(res.data);
         } catch (err) {
@@ -92,6 +100,7 @@ const Dashboard = () => {
             const res = await axios.get("http://localhost:4000/api/tasks/completed", {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            console.log('Dashboard fetchCompletedTasks:', res.data);
             setTasks(res.data);
             setDeadlineTasks([]);
         } catch (err) {
@@ -120,15 +129,84 @@ const Dashboard = () => {
     /* ================= UPDATE STATUS ================= */
     const updateStatus = async (id, status) => {
         try {
-            await axios.put(
-                `http://localhost:4000/api/tasks/${id}`,
+            await axios.patch(
+                `http://localhost:4000/api/tasks/${id}/status`,
                 { status },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            fetchTasks();
+            
+            // Update tasks state immediately for better UX
+            const updatedTasks = tasks.map(task => 
+                task._id === id ? { ...task, status } : task
+            );
+            setTasks(updatedTasks);
+            
+            // Recalculate deadline tasks with updated data
+            calculateDeadlineTasks(updatedTasks);
+            
+            // Show success toast
+            if (window.showToast) {
+                window.showToast(`Task marked as ${status}`, 'success');
+            }
+            
         } catch (err) {
             console.log(err);
+            if (window.showToast) {
+                window.showToast('Failed to update task status', 'error');
+            }
         }
+    };
+
+    /* ================= DELETE TASK ================= */
+    const deleteTask = async (id) => {
+        setTaskToDelete(id);
+        setShowConfirmModal(true);
+    };
+
+    const confirmDelete = async () => {
+        if (taskToDelete) {
+            try {
+                await axios.delete(
+                    `http://localhost:4000/api/tasks/${taskToDelete}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                
+                // Remove task from state immediately
+                const updatedTasks = tasks.filter(task => task._id !== taskToDelete);
+                setTasks(updatedTasks);
+                
+                // Recalculate deadline tasks
+                calculateDeadlineTasks(updatedTasks);
+                
+                if (window.showToast) {
+                    window.showToast('Task deleted successfully', 'success');
+                }
+                
+            } catch (err) {
+                console.log(err);
+                if (window.showToast) {
+                    window.showToast('Failed to delete task', 'error');
+                }
+            }
+        }
+        setShowConfirmModal(false);
+        setTaskToDelete(null);
+    };
+
+    const cancelDelete = () => {
+        setShowConfirmModal(false);
+        setTaskToDelete(null);
+    };
+
+    /* ================= EDIT TASK ================= */
+    const editTask = (task) => {
+        setEditingTask(task);
+        setShowEditModal(true);
+    };
+
+    const closeEditModal = () => {
+        setShowEditModal(false);
+        setEditingTask(null);
     };
 
     useEffect(() => {
@@ -138,7 +216,7 @@ const Dashboard = () => {
     /* ================= UI ================= */
     return (
         <>
-            <Navbar openSidebar={openSidebar} />
+            <Navbar openSidebar={openSidebar} theme={theme} />
 
             <div className="layout">
                 <Sidebar
@@ -148,6 +226,8 @@ const Dashboard = () => {
                     fetchMyTasks={showMyTasks}
                     fetchCompletedTasks={showCompleted}
                     showSettings={showSettings}
+                    tasks={tasks}
+                    theme={theme}
                 />
 
                 <div className={`main ${theme}`}>
@@ -163,15 +243,53 @@ const Dashboard = () => {
                                 <>
                                     {deadlineTasks.length > 0 && (
                                         <div className="deadline-notifications">
-                                            <h3>⚠️ Upcoming Deadlines</h3>
-                                            <ul>
-                                                {deadlineTasks.map(task => (
-                                                    <li key={task._id}>
-                                                        {task.title} — due on{" "}
-                                                        {new Date(task.dueDate).toLocaleDateString()}
-                                                    </li>
-                                                ))}
-                                            </ul>
+                                            <div className="deadline-header">
+                                                <div className="deadline-icon">
+                                                    <span className="pulse-icon">⚠️</span>
+                                                </div>
+                                                <div className="deadline-title">
+                                                    <h3>Upcoming Deadlines</h3>
+                                                    <p>{deadlineTasks.length} task{deadlineTasks.length > 1 ? 's' : ''} due soon</p>
+                                                </div>
+                                            </div>
+                                            <div className="deadline-list">
+                                                {deadlineTasks.map(task => {
+                                                    const dueDate = new Date(task.dueDate);
+                                                    const today = new Date();
+                                                    const isToday = dueDate.toDateString() === today.toDateString();
+                                                    const isTomorrow = dueDate.toDateString() === new Date(today.getTime() + 24 * 60 * 60 * 1000).toDateString();
+                                                    
+                                                    return (
+                                                        <div key={task._id} className={`deadline-item ${isToday ? 'today' : 'tomorrow'}`}>
+                                                            <div className="deadline-task-info">
+                                                                <div className="task-title">{task.title}</div>
+                                                                <div className="task-due">
+                                                                    <span className="due-label">
+                                                                        {isToday ? '🔥 Due Today' : '⏰ Due Tomorrow'}
+                                                                    </span>
+                                                                    <span className="due-date">
+                                                                        {dueDate.toLocaleDateString('en-US', { 
+                                                                            month: 'short', 
+                                                                            day: 'numeric',
+                                                                            hour: '2-digit',
+                                                                            minute: '2-digit'
+                                                                        })}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="deadline-actions">
+                                                                <button 
+                                                                    className="quick-complete-btn"
+                                                                    onClick={() => updateStatus(task._id, 'completed')}
+                                                                    title="Mark as completed"
+                                                                >
+                                                                    ✓
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     )}
 
@@ -190,6 +308,8 @@ const Dashboard = () => {
                                             task={task}
                                             updateStatus={updateStatus}
                                             showDeadline={true}
+                                            deleteTask={deleteTask}
+                                            editTask={editTask}
                                         />
                                     ))}
                                 </>
@@ -198,16 +318,50 @@ const Dashboard = () => {
                             {/* ================= MY TASKS ================= */}
                             {currentPage === "mytasks" && (
                                 <>
-                                    <h2>My Tasks</h2>
+                                    <div className="page-header">
+                                        <div className="header-content">
+                                            <div className="header-icon">
+                                                <span className="page-icon">👤</span>
+                                            </div>
+                                            <div className="header-text">
+                                                <h2>My Tasks</h2>
+                                                <p>Tasks assigned to you</p>
+                                            </div>
+                                        </div>
+                                        <div className="task-summary">
+                                            <div className="summary-item">
+                                                <span className="summary-number">{tasks.length}</span>
+                                                <span className="summary-label">Total</span>
+                                            </div>
+                                            <div className="summary-item">
+                                                <span className="summary-number">{tasks.filter(t => t.status === 'pending').length}</span>
+                                                <span className="summary-label">Pending</span>
+                                            </div>
+                                            <div className="summary-item">
+                                                <span className="summary-number">{tasks.filter(t => t.status === 'inprogress').length}</span>
+                                                <span className="summary-label">In Progress</span>
+                                            </div>
+                                            <div className="summary-item">
+                                                <span className="summary-number">{tasks.filter(t => t.status === 'completed').length}</span>
+                                                <span className="summary-label">Completed</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     {tasks.length === 0 && <EmptyState message={"You have no assigned tasks at the moment!"} />}
-                                    {tasks.map(task => (
-                                        <TaskCard
-                                            key={task._id}
-                                            task={task}
-                                            updateStatus={updateStatus}
-                                            showDeadline={false}
-                                        />
-                                    ))}
+                                    
+                                    <div className="tasks-grid">
+                                        {tasks.map(task => (
+                                            <TaskCard
+                                                key={task._id}
+                                                task={task}
+                                                updateStatus={updateStatus}
+                                                showDeadline={true}
+                                                deleteTask={deleteTask}
+                                                editTask={editTask}
+                                            />
+                                        ))}
+                                    </div>
                                 </>
                             )}
 
@@ -222,6 +376,8 @@ const Dashboard = () => {
                                             task={task}
                                             updateStatus={updateStatus}
                                             showDeadline={false}
+                                            deleteTask={deleteTask}
+                                            editTask={editTask}
                                         />
                                     ))}
                                 </>
@@ -238,6 +394,26 @@ const Dashboard = () => {
                                     fetchTasks={fetchTasks}
                                 />
                             )}
+                            
+                            {/* ================= EDIT MODAL ================= */}
+                            {showEditModal && editingTask && (
+                                <EditTaskModal
+                                    key={editingTask._id}
+                                    closeModal={closeEditModal}
+                                    token={token}
+                                    fetchTasks={fetchTasks}
+                                    task={editingTask}
+                                />
+                            )}
+                            
+                            {/* ================= CONFIRM MODAL ================= */}
+                            <ConfirmModal
+                                isOpen={showConfirmModal}
+                                title="Delete Task"
+                                message="Are you sure you want to delete this task? This action cannot be undone."
+                                onConfirm={confirmDelete}
+                                onCancel={cancelDelete}
+                            />
                         </>
                     )}
                 </div>

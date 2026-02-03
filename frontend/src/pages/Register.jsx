@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
+import { FaUser, FaEnvelope, FaLock, FaUserPlus } from "react-icons/fa";
+import "./Register.css";
 
 
 const Register = () => {
@@ -13,28 +15,99 @@ const Register = () => {
         e.preventDefault();
         try {
             await axios.post("http://localhost:4000/api/auth/register", { name, email, password });
-            alert("Registered successfully. Please login.");
+            
+            // Save email for login pre-fill
+            localStorage.setItem("lastRegisteredEmail", email);
+            
+            if (window.showToast) {
+                window.showToast("Registered successfully. Please login.", 'success');
+            } else {
+                alert("Registered successfully. Please login.");
+            }
             navigate("/login");
         } catch (err) {
-            console.log(err)
-            alert("Registration failed");
+            console.log("Registration error:", err.response?.data || err.message);
+            if (window.showToast) {
+                if (err.response?.data?.message) {
+                    window.showToast(err.response.data.message, 'error');
+                } else if (err.response?.status === 400) {
+                    window.showToast("User already exists or invalid data. Please try with different email.", 'error');
+                } else {
+                    window.showToast("Registration failed. Please try again.", 'error');
+                }
+            } else {
+                // Fallback to alert if toast is not available
+                if (err.response?.data?.message) {
+                    alert(err.response.data.message);
+                } else if (err.response?.status === 400) {
+                    alert("User already exists or invalid data. Please try with different email.");
+                } else {
+                    alert("Registration failed. Please try again.");
+                }
+            }
         }
     };
 
     return (
         <div className="register-container">
-            <form onSubmit={handleRegister} className="register-form">
-                <h2>Register</h2>
-                <input type="text" placeholder="Name" value={name} onChange={e => setName(e.target.value)} required />
-                <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-                <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
-                <button type="submit">Register</button>
-
-                {/* 🔹 Login link */}
-                <p style={{ textAlign: "center", marginTop: "15px", fontSize: "14px" }}>
-                    Already have an account? <Link to="/login" style={{ color: "#2c7a7b", textDecoration: "none" }}>Login</Link>
-                </p>
-            </form>
+            <div className="register-card">
+                <div className="register-header">
+                    <h2>Create Account</h2>
+                    <p>Join us today</p>
+                </div>
+                
+                <form onSubmit={handleRegister} className="register-form" autoComplete="off">
+                    <div className="input-group">
+                        <input 
+                            type="text" 
+                            placeholder="Full Name" 
+                            value={name} 
+                            onChange={e => setName(e.target.value)} 
+                            required 
+                            className="form-input"
+                            autoComplete="off"
+                        />
+                        <FaUser className="input-icon" />
+                    </div>
+                    
+                    <div className="input-group">
+                        <input 
+                            type="email" 
+                            placeholder="Email Address" 
+                            value={email} 
+                            onChange={e => setEmail(e.target.value)} 
+                            required 
+                            className="form-input"
+                            autoComplete="off"
+                        />
+                        <FaEnvelope className="input-icon" />
+                    </div>
+                    
+                    <div className="input-group">
+                        <input 
+                            type="password" 
+                            placeholder="Password" 
+                            value={password} 
+                            onChange={e => setPassword(e.target.value)} 
+                            required 
+                            className="form-input"
+                            autoComplete="new-password"
+                        />
+                        <FaLock className="input-icon" />
+                    </div>
+                    
+                    <button type="submit" className="register-btn">
+                        <FaUserPlus className="btn-icon" />
+                        <span>Create Account</span>
+                    </button>
+                </form>
+                
+                <div className="login-link">
+                    <p>Already have an account? 
+                        <Link to="/login" className="link">Sign In</Link>
+                    </p>
+                </div>
+            </div>
         </div>
     );
 };
