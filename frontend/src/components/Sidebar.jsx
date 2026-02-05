@@ -16,7 +16,8 @@ const Sidebar = ({
     isSidebarOpen = false,
     closeSidebar = () => { },
     tasks = [],
-    theme = "light"
+    theme = "light",
+    currentPage = "dashboard"
 }) => {
     const sidebarRef = useRef(null);
     const [taskStats, setTaskStats] = useState({ total: 0, completed: 0, pending: 0, inProgress: 0 });
@@ -65,27 +66,27 @@ const Sidebar = ({
         <aside ref={sidebarRef} className={`sidebar ${theme} ${isSidebarOpen ? "open" : ""}`}>
             <ul className="sidebar-menu">
 
-                <li onClick={() => { goToHome(); closeSidebar(); }}>
+                <li className={currentPage === "home" ? "active" : ""} onClick={() => { goToHome(); closeSidebar(); }}>
                     <FaHome />
                     <span>Home</span>
                 </li>
 
-                <li onClick={() => { fetchTasks(); closeSidebar(); }}>
+                <li className={currentPage === "dashboard" ? "active" : ""} onClick={() => { fetchTasks(); closeSidebar(); }}>
                     <FaTachometerAlt />
                     <span>Dashboard</span>
                 </li>
 
-                <li onClick={() => { fetchMyTasks(); closeSidebar(); }}>
+                <li className={currentPage === "mytasks" ? "active" : ""} onClick={() => { fetchMyTasks(); closeSidebar(); }}>
                     <FaTasks />
                     <span>My Tasks</span>
                 </li>
 
-                <li onClick={() => { fetchCompletedTasks(); closeSidebar(); }}>
+                <li className={currentPage === "completed" ? "active" : ""} onClick={() => { fetchCompletedTasks(); closeSidebar(); }}>
                     <FaCheckCircle />
                     <span>Completed</span>
                 </li>
 
-                <li onClick={() => { showSettings(); closeSidebar(); }}>
+                <li className={currentPage === "settings" ? "active" : ""} onClick={() => { showSettings(); closeSidebar(); }}>
                     <FaCog />
                     <span>Settings</span>
                 </li>

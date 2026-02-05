@@ -7,7 +7,8 @@ const {
     deleteTask,
     getOwnTask,
     completeTask,
-    getCompletedTasks
+    getCompletedTasks,
+    searchTasks
 } = require("../controllers/taskController");
 
 const protect = require("../middleware/authMiddleware");
@@ -24,5 +25,8 @@ router.patch("/:id/complete", protect, completeTask);
 
 // get completed tasks
 router.get("/completed", protect, getCompletedTasks);
+
+// search tasks
+router.get("/search", protect, searchTasks);
 
 module.exports = router;

@@ -3,24 +3,31 @@ import axios from "axios";
 import TaskCard from "../components/TaskCard";
 import CreateTaskModal from "../components/CreateTaskModal";
 import EditTaskModal from "../components/EditTaskModal";
+import ViewTaskModal from "../components/ViewTaskModal";
 import ConfirmModal from "../components/ConfirmModal";
 import Sidebar from "../components/Sidebar";
 import Settings from "./Setting";
 import Navbar from "../components/Navbar";
 import Loading from "../components/Loading";
 import EmptyState from "../components/EmptyState";
+import SearchBar from "../components/SearchBar";
 const Dashboard = () => {
     const [tasks, setTasks] = useState([]);
     const [deadlineTasks, setDeadlineTasks] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState(null);
     const [editingTask, setEditingTask] = useState(null);
+    const [viewingTask, setViewingTask] = useState(null);
     const [currentPage, setCurrentPage] = useState("dashboard");
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const toggleTheme = () => {
         const newTheme = theme === "light" ? "dark" : "light";
@@ -63,6 +70,37 @@ const Dashboard = () => {
     const showSettings = () => {
         setCurrentPage("settings");
         setIsSidebarOpen(false);
+    };
+
+    /* ================= SEARCH FUNCTIONALITY ================= */
+    const handleSearch = async (query) => {
+        try {
+            setLoading(true);
+            setIsSearching(true);
+            setSearchQuery(query);
+            
+            const res = await axios.get(`http://localhost:4000/api/tasks/search?query=${encodeURIComponent(query)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            setSearchResults(res.data);
+            setCurrentPage("search");
+        } catch (err) {
+            console.log(err);
+            if (window.showToast) {
+                window.showToast('Search failed', 'error');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleClearSearch = () => {
+        setIsSearching(false);
+        setSearchResults([]);
+        setSearchQuery('');
+        setCurrentPage("dashboard");
+        fetchTasks();
     };
 
     /* ================= API CALLS ================= */
@@ -209,6 +247,17 @@ const Dashboard = () => {
         setEditingTask(null);
     };
 
+    /* ================= VIEW TASK ================= */
+    const viewTask = (task) => {
+        setViewingTask(task);
+        setShowViewModal(true);
+    };
+
+    const closeViewModal = () => {
+        setShowViewModal(false);
+        setViewingTask(null);
+    };
+
     useEffect(() => {
         fetchTasks().finally(() => setLoading(false));
     }, []);
@@ -228,9 +277,18 @@ const Dashboard = () => {
                     showSettings={showSettings}
                     tasks={tasks}
                     theme={theme}
+                    currentPage={currentPage}
                 />
 
                 <div className={`main ${theme}`}>
+
+                    {(currentPage === "dashboard" || currentPage === "search") && (
+                        <SearchBar 
+                            onSearch={handleSearch}
+                            onClear={handleClearSearch}
+                            theme={theme}
+                        />
+                    )}
 
                     {loading ? (
 
@@ -238,6 +296,39 @@ const Dashboard = () => {
                         <Loading />
                     ) : (
                         <>
+                            {/* ================= SEARCH RESULTS ================= */}
+                            {currentPage === "search" && (
+                                <>
+                                    <div className="page-header">
+                                        <div className="header-content">
+                                            <div className="header-icon">
+                                                <span className="page-icon">🔍</span>
+                                            </div>
+                                            <div className="header-text">
+                                                <h2>Search Results</h2>
+                                                <p>Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {searchResults.length === 0 && <EmptyState message={`No tasks found for "${searchQuery}"`} />}
+                                    
+                                    <div className="tasks-grid">
+                                        {searchResults.map(task => (
+                                            <TaskCard
+                                                key={task._id}
+                                                task={task}
+                                                updateStatus={updateStatus}
+                                                showDeadline={true}
+                                                deleteTask={deleteTask}
+                                                editTask={editTask}
+                                                viewTask={viewTask}
+                                            />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+
                             {/* ================= DASHBOARD ================= */}
                             {currentPage === "dashboard" && (
                                 <>
@@ -310,6 +401,7 @@ const Dashboard = () => {
                                             showDeadline={true}
                                             deleteTask={deleteTask}
                                             editTask={editTask}
+                                            viewTask={viewTask}
                                         />
                                     ))}
                                 </>
@@ -359,6 +451,7 @@ const Dashboard = () => {
                                                 showDeadline={true}
                                                 deleteTask={deleteTask}
                                                 editTask={editTask}
+                                                viewTask={viewTask}
                                             />
                                         ))}
                                     </div>
@@ -378,6 +471,7 @@ const Dashboard = () => {
                                             showDeadline={false}
                                             deleteTask={deleteTask}
                                             editTask={editTask}
+                                            viewTask={viewTask}
                                         />
                                     ))}
                                 </>
@@ -403,6 +497,14 @@ const Dashboard = () => {
                                     token={token}
                                     fetchTasks={fetchTasks}
                                     task={editingTask}
+                                />
+                            )}
+                            
+                            {/* ================= VIEW MODAL ================= */}
+                            {showViewModal && viewingTask && (
+                                <ViewTaskModal
+                                    task={viewingTask}
+                                    closeModal={closeViewModal}
                                 />
                             )}
                             

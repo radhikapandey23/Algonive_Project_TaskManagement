@@ -131,3 +131,46 @@ exports.getCompletedTasks = async (req, res) => {
         res.status(500).json({ message: "Failed to fetch completed tasks" });
     }
 };
+
+// SEARCH TASKS
+exports.searchTasks = async (req, res) => {
+    try {
+        const { query } = req.query;
+        
+        if (!query) {
+            return res.status(400).json({ message: "Search query is required" });
+        }
+
+        const searchRegex = new RegExp(query, 'i');
+        
+        const tasks = await Task.find({
+            title: searchRegex
+        })
+        .populate("createdBy", "name email")
+        .populate("assignedTo", "name email")
+        .sort({ createdAt: -1 });
+
+        // Filter by user names if query matches
+        const userFilteredTasks = await Task.find()
+            .populate("createdBy", "name email")
+            .populate("assignedTo", "name email")
+            .then(allTasks => {
+                return allTasks.filter(task => 
+                    task.createdBy?.name?.toLowerCase().includes(query.toLowerCase()) ||
+                    task.assignedTo?.name?.toLowerCase().includes(query.toLowerCase()) ||
+                    task.createdBy?.email?.toLowerCase().includes(query.toLowerCase()) ||
+                    task.assignedTo?.email?.toLowerCase().includes(query.toLowerCase())
+                );
+            });
+
+        // Combine and remove duplicates
+        const allResults = [...tasks, ...userFilteredTasks];
+        const uniqueTasks = allResults.filter((task, index, self) => 
+            index === self.findIndex(t => t._id.toString() === task._id.toString())
+        );
+
+        res.json(uniqueTasks);
+    } catch (err) {
+        res.status(500).json({ message: "Failed to search tasks" });
+    }
+};

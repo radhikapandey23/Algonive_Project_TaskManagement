@@ -13,6 +13,27 @@ const Register = () => {
 
     const handleRegister = async (e) => {
         e.preventDefault();
+        
+        // Frontend password validation
+        const alphanumericRegex = /^[a-zA-Z0-9]+$/;
+        if (!alphanumericRegex.test(password)) {
+            if (window.showToast) {
+                window.showToast("Password must contain only letters and numbers", 'error');
+            } else {
+                alert("Password must contain only letters and numbers");
+            }
+            return;
+        }
+        
+        if (password.length < 6) {
+            if (window.showToast) {
+                window.showToast("Password must be at least 6 characters long", 'error');
+            } else {
+                alert("Password must be at least 6 characters long");
+            }
+            return;
+        }
+        
         try {
             await axios.post("http://localhost:4000/api/auth/register", { name, email, password });
             

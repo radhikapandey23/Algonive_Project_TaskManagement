@@ -7,6 +7,16 @@ exports.registerUser = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
+        // Password validation - alphanumeric only
+        const alphanumericRegex = /^[a-zA-Z0-9]+$/;
+        if (!alphanumericRegex.test(password)) {
+            return res.status(400).json({ message: "Password must contain only letters and numbers" });
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters long" });
+        }
+
         const userExists = await User.findOne({ email });
         if (userExists)
             return res.status(400).json({ message: "User already exists" });
